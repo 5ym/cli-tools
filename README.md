@@ -6,7 +6,7 @@
 ```powershell
 git clone https://github.com/5ym/cli-tools
 cd cli-tools
-./t.ps1 aws login --profile work          # --remote は t.ps1 が付ける (下の「ログイン」)
+./t.ps1 aws login --profile work          # 表示された URL をブラウザで開く (下の「ログイン」)
 ./t.ps1 aws --profile work sts get-caller-identity
 $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 '{"a":1}' | ./t.ps1 jq .a
@@ -29,9 +29,12 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 
 `aws login` (コンソールのログインをそのまま CLI に使う方式) を使う。アクセスキーは置かない。
 
-- wslc は host ネットワークに対応していないので、ブラウザから手元の `localhost` に返ってくる方式は届かない。
-  **`t.ps1` が `aws login` に `--remote` を付ける** ── 表示された URL をブラウザで開き、ログイン後に出るコードを
-  ターミナルに貼り付ける。対話なので、自分の端末から動かす
+- 表示された URL をブラウザで開いてログインすると、ブラウザが手元の `http://127.0.0.1:<ポート>/oauth/callback` に
+  戻ってきて終わる。コードの貼り付けは要らない
+- wslc は host ネットワークに対応していないので、そのままではブラウザの戻り先がコンテナに届かない。
+  **`aws login` のときだけ `t.ps1` が手元の同じポートで待ち受けて、`wslc exec` の curl でコンテナの中の CLI に渡す**。
+  受け付けるのは `GET /oauth/callback` だけで、URL はコマンドに埋め込まず curl の設定として標準入力で渡す
+- 別の端末のブラウザでログインしたいときは `--remote` を付ける (中継せず、ログイン後に出るコードを貼り付ける方式)
 - プロファイル名は自由。どのアカウントに入るかはブラウザでログインするときに選ぶので、入ったら
   `sts get-caller-identity` で確かめる
 - 切れたら `./t.ps1 aws login --profile <名前>` をやり直す
@@ -52,7 +55,7 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 
 ## wslc の制限
 
-- **wslc は host ネットワークに対応していない** (上のログイン)
+- **wslc は host ネットワークに対応していない** (上のログインは t.ps1 が中継する)
 - uid は指定しない (Windows のファイルに持ち主の uid は無い)
 - **`wslc-compose` は使わない。** 標準入力がコンソールでもパイプでもないところ (AI のエージェントのツールなど) で
   `-i` を付けると、1 秒ほど以上かかるコマンドの出力が落ちて `ERROR_INVALID_HANDLE` になる。`wslc-compose run` は
