@@ -59,7 +59,7 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 - uid は指定しない (Windows のファイルに持ち主の uid は無い)
 - **`wslc-compose` は使わない。** 標準入力が NUL のところ (AI のエージェントのツールなど) で
   `-i` を付けると、1 秒ほど以上かかるコマンドの出力が落ちて `ERROR_INVALID_HANDLE` になる。`wslc-compose run` は
-  必ず標準入力をつなぐので避けられない。`t.ps1` は `wslc run` を直接使い、標準入力が NUL のときだけ `-i` を外す (NUL かどうかは `GetFileType` で見分けるので、ファイルや外のパイプからの入力は届く)
+  必ず標準入力をつなぐ (空のパイプを渡せば避けられるが、`wslc run` を直接使うほうが単純)。`t.ps1` は `wslc run` を直接使い、標準入力が NUL のときだけ `-i` を外す (NUL かどうかは `GetFileType` で見分けるので、ファイルや外のパイプからの入力は届く)
 
 ## 入れるものの確かめ方
 
