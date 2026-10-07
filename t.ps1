@@ -89,14 +89,26 @@ function Start-LoginRelay($name) {
     }
 }
 
-# 標準入力は、手元の端末かパイプのときだけつなぐ (-i)。標準入力がどちらでもないところ (AI のエージェントのツールなど) で
-# -i を付けると、1 秒ほど以上かかるコマンドの出力が落ちて ERROR_INVALID_HANDLE になる (2026-10-07)。
+# 標準入力は NUL のとき以外つなぐ (-i)。NUL のところ (AI のエージェントのツールなど) で -i を付けると、
+# 1 秒ほど以上かかるコマンドの出力が落ちて ERROR_INVALID_HANDLE になる (2026-10-07)。NUL は中身が無いので、
+# つながなくても失うものは無い。ファイルや外のパイプからの入力 (`echo x | pwsh -File t.ps1 cat`) はつなぐ
 # 手元の端末から対話で使うときだけ TTY を付ける (-t)。
 # このスクリプトにパイプしたもの (`x | ./t.ps1 cat`) は標準入力ではなく $input に来るので、下で流し直す
 # (流さないとコンテナには何も届かない)
+# 標準入力が NUL か (リダイレクトされた文字デバイス = FILE_TYPE_CHAR)。ファイル (FILE_TYPE_DISK) や
+# パイプ (FILE_TYPE_PIPE) からの入力は中身があるので NUL とは扱わない。端末はリダイレクトされていないので見ない
+function Test-NulStdin {
+    if (-not [Console]::IsInputRedirected) { return $false }
+    if (-not ('CliTools.Kernel32' -as [type])) {
+        Add-Type -Namespace CliTools -Name Kernel32 -MemberDefinition (
+            '[DllImport("kernel32.dll")] public static extern System.IntPtr GetStdHandle(int n);' +
+            '[DllImport("kernel32.dll")] public static extern int GetFileType(System.IntPtr h);')
+    }
+    return [CliTools.Kernel32]::GetFileType([CliTools.Kernel32]::GetStdHandle(-10)) -eq 2
+}
 $piped = $MyInvocation.ExpectingInput
 $opts = @('--rm', '-v', "${root}:/repo", '-w', '/repo', '-e', 'HOME=/repo/.home', '-e', 'AWS_PAGER=')
-if ($piped -or -not [Console]::IsInputRedirected) { $opts += '-i' }
+if ($piped -or -not (Test-NulStdin)) { $opts += '-i' }
 if (-not ($piped -or [Console]::IsInputRedirected -or [Console]::IsOutputRedirected)) { $opts += '-t' }
 # 手元で設定しているときだけ渡す
 if ($env:AWS_PROFILE) { $opts += '-e', "AWS_PROFILE=$env:AWS_PROFILE" }
