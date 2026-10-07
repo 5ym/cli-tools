@@ -1,0 +1,18 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "github>5ym/repo-config"
+    ],
+    "customManagers": [
+        {
+            "description": "Dockerfile の `# renovate: datasource=… depName=…` の次の行の `ARG 名前=版` を見る。**managerFilePatterns の正規表現は `/…/` で囲む。** 囲まないと glob と読まれて何にも当たらない。FROM は Renovate の dockerfile の既定で上がる。",
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/^Dockerfile$/"
+            ],
+            "matchStrings": [
+                "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*ARG\\s+[A-Z_]+=(?<currentValue>\\S+)"
+            ]
+        }
+    ]
+}
