@@ -18,4 +18,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t tools .
-      - run: docker run --rm tools sh -euc 'aws --version; jq --version'
+      - run: docker run --rm tools sh -euc 'aws --version'

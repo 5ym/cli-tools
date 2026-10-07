@@ -92,7 +92,7 @@ function Start-LoginRelay($name) {
 # 標準入力は、手元の端末かパイプのときだけつなぐ (-i)。標準入力がどちらでもないところ (AI のエージェントのツールなど) で
 # -i を付けると、1 秒ほど以上かかるコマンドの出力が落ちて ERROR_INVALID_HANDLE になる (2026-10-07)。
 # 手元の端末から対話で使うときだけ TTY を付ける (-t)。
-# このスクリプトにパイプしたもの (`x | ./t.ps1 jq .`) は標準入力ではなく $input に来るので、下で流し直す
+# このスクリプトにパイプしたもの (`x | ./t.ps1 cat`) は標準入力ではなく $input に来るので、下で流し直す
 # (流さないとコンテナには何も届かない)
 $piped = $MyInvocation.ExpectingInput
 $opts = @('--rm', '-v', "${root}:/repo", '-w', '/repo', '-e', 'HOME=/repo/.home', '-e', 'AWS_PAGER=')
@@ -100,7 +100,8 @@ if ($piped -or -not [Console]::IsInputRedirected) { $opts += '-i' }
 if (-not ($piped -or [Console]::IsInputRedirected -or [Console]::IsOutputRedirected)) { $opts += '-t' }
 # 手元で設定しているときだけ渡す
 if ($env:AWS_PROFILE) { $opts += '-e', "AWS_PROFILE=$env:AWS_PROFILE" }
-$cmd = if ($args.Count) { @($args) } else { @('bash') }
+# 引数が 1 つのときも配列にする (if の値は 1 要素の配列が中身に展開され、$cmd[0] が 1 文字目になる)
+$cmd = @(if ($args.Count) { $args } else { 'bash' })
 
 $relay = $null
 $sub = $cmd | Select-Object -Skip 1 | Where-Object { $_ -notlike '-*' } | Select-Object -First 1

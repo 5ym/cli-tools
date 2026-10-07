@@ -9,7 +9,7 @@ cd cli-tools
 ./t.ps1 aws login --profile work          # 表示された URL をブラウザで開く (下の「ログイン」)
 ./t.ps1 aws --profile work sts get-caller-identity
 $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
-'{"a":1}' | ./t.ps1 jq .a
+./t.ps1 aws --profile work ec2 describe-regions --output json | jq -r '.Regions[].RegionName'
 ./t.ps1                                   # 引数なしならシェルに入る
 ```
 
@@ -18,12 +18,12 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 | 入っているもの | 用途 |
 | --- | --- |
 | aws | AWS CLI v2 (公式のイメージ `public.ecr.aws/aws-cli/aws-cli` を版で固定) |
-| jq | 出力の加工 |
 
 ## 要るもの
 
 - Windows の [WSL](https://learn.microsoft.com/windows/wsl/) と、それに付いてくる `wslc` (WSL コンテナの CLI)
 - PowerShell (7 系でも Windows PowerShell 5.1 でも動く)
+- [jq](https://jqlang.org/) は手元に入れる (`winget install jqlang.jq`)。出力の加工は手元でする
 
 ## ログイン
 
@@ -47,7 +47,7 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 - `.dockerignore` で Dockerfile 以外をビルドの文脈から外している (`.home/` をイメージの組み立てに載せない)
 - Dockerfile を変えると、次の `./t.ps1` でイメージを作り直す
 - `AWS_PAGER` は空にしてある (ページャで止まらない)。`AWS_PROFILE` は手元で設定しているときだけ渡す
-- PowerShell でパイプしたもの (`'{"a":1}' | ./t.ps1 jq .`) は、`t.ps1` がコンテナの標準入力に流し直す。
+- PowerShell でパイプしたもの (`'hello' | ./t.ps1 cat`) は、`t.ps1` がコンテナの標準入力に流し直す。
   行を LF でつないだ UTF-8 にして渡す (PowerShell のまま流すと CRLF になり、5.1 では日本語が `?` に化けるため、
   base64 で包んでコンテナの中で戻す)。PowerShell のパイプは行 (文字列) 単位なので、バイナリは通らない
 - `t.ps1` は **BOM 付きの UTF-8** にしてある。BOM が無いと Windows PowerShell 5.1 が Shift_JIS として読み、
@@ -67,12 +67,26 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 
 - aws: AWS CLI v2 はチェックサムのファイルを出していない (PGP の署名だけ) ので、自前では入れず、AWS 公式の
   イメージを版で固定して土台にする
-- jq: リリースのチェックサムのファイル
+- ほかの CLI: リリースのチェックサムのファイル (下の「CLI を足す」)
 
 ## CLI を足す
 
-[Dockerfile](Dockerfile) の jq と同じ形で足す。`# renovate: datasource=… depName=…` の次の行に `ARG 名前=版` を書き、
+コンテナに入れるのは、手元に入れたくないもの (版を固定したい・ログインを手元に置きたくないもの) だけにする。
+[Dockerfile](Dockerfile) に次の形で足す。`# renovate: datasource=… depName=…` の次の行に `ARG 名前=版` を書き、
 公式のチェックサムで確かめてから入れる。[CI](.github/workflows/tools.yml) の確認のコマンドにも足す。
+
+```dockerfile
+ARG TARGETARCH
+# renovate: datasource=github-releases depName=<owner>/<repo>
+ARG FOO_VERSION=v1.2.3
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+RUN a=${TARGETARCH:-amd64}; mkdir /tmp/dl && cd /tmp/dl; \
+    curl -fsSLO "https://github.com/<owner>/<repo>/releases/download/${FOO_VERSION}/foo-linux-$a"; \
+    curl -fsSL "https://github.com/<owner>/<repo>/releases/download/${FOO_VERSION}/checksums.txt" \
+      | grep -E "  foo-linux-$a\$" | sha256sum -c --strict -; \
+    install -m 755 "foo-linux-$a" /usr/local/bin/foo; \
+    cd / && rm -r /tmp/dl
+```
 
 ## 版
 
