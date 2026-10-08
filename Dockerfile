@@ -4,7 +4,7 @@
 # 土台は AWS 公式の AWS CLI のイメージ (Amazon Linux 2023)。AWS CLI v2 はチェックサムのファイルを出していない
 # (PGP の署名だけ) ので、自前で入れずに公式のイメージを版で固定して使う。
 # jq など出力の加工は手元のものを使う (`./t.ps1 aws ... | jq`)。CLI を足すときは README.md「CLI を足す」
-FROM public.ecr.aws/aws-cli/aws-cli:2.37.10
+FROM public.ecr.aws/aws-cli/aws-cli:2.37.11
 
 # 公式のイメージは ENTRYPOINT が aws。t.ps1 は aws 以外 (シェルなど) も動かすので外す
 ENTRYPOINT []
