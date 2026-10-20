@@ -38,6 +38,8 @@ $env:AWS_PROFILE = 'work'; ./t.ps1 aws s3 ls
 - プロファイル名は自由。どのアカウントに入るかはブラウザでログインするときに選ぶので、入ったら
   `sts get-caller-identity` で確かめる
 - 切れたら `./t.ps1 aws login --profile <名前>` をやり直す
+- IAM Identity Center (SSO) のプロファイルは `./t.ps1 aws sso login --profile <名前>`。ブラウザの戻り先は
+  `aws login` と同じ形なので同じく中継する。`--use-device-code` を付けたときは中継しない (コードを確かめる方式)
 
 ## 仕組み
 
