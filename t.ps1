@@ -116,8 +116,12 @@ if ($env:AWS_PROFILE) { $opts += '-e', "AWS_PROFILE=$env:AWS_PROFILE" }
 $cmd = @(if ($args.Count) { $args } else { 'bash' })
 
 $relay = $null
-$sub = $cmd | Select-Object -Skip 1 | Where-Object { $_ -notlike '-*' } | Select-Object -First 1
-if ($cmd[0] -eq 'aws' -and $sub -eq 'login' -and -not ($cmd -contains '--remote')) {
+$subs = @($cmd | Select-Object -Skip 1 | Where-Object { $_ -notlike '-*' } | Select-Object -First 2)
+# aws sso login (IAM Identity Center) も既定ではブラウザが 127.0.0.1:<port>/oauth/callback に戻ってくるので同じく中継する。
+# --use-device-code (コードを確かめる方式) のときは戻ってこないので中継しない
+$browserLogin = ($subs[0] -eq 'login' -and -not ($cmd -contains '--remote')) -or
+    ($subs[0] -eq 'sso' -and $subs[1] -eq 'login' -and -not ($cmd -contains '--use-device-code'))
+if ($cmd[0] -eq 'aws' -and $browserLogin) {
     $name = "cli-tools-login-$PID"
     $opts += '--name', $name
     $relay = Start-LoginRelay $name
